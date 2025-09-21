@@ -1,0 +1,108 @@
+.notepad {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary);
+}
+
+.notepad-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toolbar-left {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.toolbar-btn:hover {
+  background: var(--accent-color);
+  color: white;
+}
+
+.word-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.notepad-content {
+  flex: 1;
+  position: relative;
+}
+
+.notepad-textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 20px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.notepad-textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+/* Scrollbar styling */
+.notepad-textarea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notepad-textarea::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.notepad-textarea::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.notepad-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Selection styling */
+.notepad-textarea::selection {
+  background: var(--accent-color);
+  color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .notepad-textarea {
+    font-size: 14px;
+    padding: 16px;
+  }
+  
+  .word-count {
+    display: none;
+  }
+  
+  .notepad-toolbar {
+    padding: 6px 8px;
+  }
+}

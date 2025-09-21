@@ -1,0 +1,76 @@
+.desktop {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  overflow: hidden;
+}
+
+.desktop-icons {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 80px);
+  gap: 20px;
+  z-index: 10;
+}
+
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  text-align: center;
+  user-select: none;
+}
+
+.desktop-icon:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.desktop-icon:active {
+  transform: translateY(0);
+}
+
+.desktop-icon-emoji {
+  font-size: 32px;
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.desktop-icon-name {
+  font-size: 11px;
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .desktop-icons {
+    grid-template-columns: repeat(auto-fill, 70px);
+    gap: 15px;
+    top: 15px;
+    left: 15px;
+  }
+
+  .desktop-icon-emoji {
+    font-size: 28px;
+  }
+
+  .desktop-icon-name {
+    font-size: 10px;
+  }
+}
