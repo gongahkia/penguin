@@ -12,6 +12,7 @@ const Settings = React.lazy(() => import('@/apps/Settings/Settings'));
 const PluginManager = React.lazy(() => import('@/apps/PluginManager/PluginManager'));
 const ScriptEditor = React.lazy(() => import('@/apps/ScriptEditor/ScriptEditor'));
 const WorkspaceManager = React.lazy(() => import('@/apps/WorkspaceManager/WorkspaceManager'));
+const ThemeMarketplace = React.lazy(() => import('@/apps/ThemeMarketplace/ThemeMarketplace'));
 
 // App registry with configurations
 export const appConfigs: Record<AppType, AppConfig> = {
@@ -124,6 +125,17 @@ export const appConfigs: Record<AppType, AppConfig> = {
     isResizable: true,
     isDraggable: true,
     component: WorkspaceManager,
+  },
+  themeMarketplace: {
+    id: 'themeMarketplace',
+    name: 'Theme Marketplace',
+    type: 'themeMarketplace',
+    icon: '🎨',
+    defaultSize: { width: 1200, height: 800 },
+    defaultPosition: { x: 100, y: 50 },
+    isResizable: true,
+    isDraggable: true,
+    component: ThemeMarketplace,
   },
 };
 

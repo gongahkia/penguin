@@ -6,6 +6,7 @@ import Desktop from '@/components/Desktop/Desktop';
 import WindowManager from '@/components/WindowManager/WindowManager';
 import NotificationSystem from '@/components/NotificationSystem/NotificationSystem';
 import VirtualKeyboard from '@/components/VirtualKeyboard/VirtualKeyboard';
+import ThemeBuilder from '@/apps/ThemeBuilder/ThemeBuilder';
 import MobileLayoutManager from '@/utils/mobileLayoutManager';
 import TouchHandler from '@/utils/touchHandler';
 
@@ -13,6 +14,7 @@ function App() {
   const dispatch = useDispatch();
   const { theme } = useSelector((state: RootState) => state.user.preferences);
   const { isLocked } = useSelector((state: RootState) => state.system);
+  const { builderOpen } = useSelector((state: RootState) => state.theme);
 
   const appRef = useRef<HTMLDivElement>(null);
   const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
@@ -193,6 +195,7 @@ function App() {
           soundEnabled={false}
         />
       )}
+      {builderOpen && <ThemeBuilder />}
     </div>
   );
 }
