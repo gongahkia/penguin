@@ -6,7 +6,7 @@ import {
   resolveSymlink,
   getCurrentUser,
   isValidFilename,
-  calculateChecksum,
+  calculateSimpleChecksum,
   createDefaultPermissions,
   createDefaultOwnership
 } from '@/utils/fileSystemUtils';
@@ -317,7 +317,7 @@ const fileSystemSlice = createSlice({
         node.size = content.length;
         node.lastModified = new Date();
         node.accessed = new Date();
-        node.checksum = calculateChecksum(content);
+        node.checksum = calculateSimpleChecksum(content);
 
         // Update all hard links pointing to the same inode
         if (node.type === 'hardlink' || node.linkCount > 1) {

@@ -33,6 +33,7 @@ export type AppType =
   | 'pluginManager'
   | 'scriptEditor'
   | 'workspaceManager'
+  | 'themeMarketplace'
   | 'plugin'; // Generic type for plugin windows
 
 export interface AppConfig {

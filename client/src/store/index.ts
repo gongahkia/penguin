@@ -4,6 +4,7 @@ import terminalReducer from './slices/terminalSlice';
 import fileSystemReducer from './slices/fileSystemSlice';
 import systemReducer from './slices/systemSlice';
 import userReducer from './slices/userSlice';
+import themeReducer from './slices/themeSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     fileSystem: fileSystemReducer,
     system: systemReducer,
     user: userReducer,
+    theme: themeReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

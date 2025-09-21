@@ -210,7 +210,8 @@ export const createEnhancedNode = (
     node.content = content;
     node.size = content.length;
     node.mimeType = getMimeType(name);
-    node.checksum = calculateChecksum(content);
+    // Calculate checksum synchronously using simple hash for now
+    node.checksum = calculateSimpleChecksum(content);
   }
 
   if (type === 'symlink' || type === 'hardlink') {
@@ -222,6 +223,17 @@ export const createEnhancedNode = (
   }
 
   return node;
+};
+
+export const calculateSimpleChecksum = (content: string): string => {
+  let hash = 0;
+  if (content.length === 0) return hash.toString();
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16);
 };
 
 export const resolveSymlink = (node: FileSystemNode, root: FileSystemNode): FileSystemNode | null => {
