@@ -1,0 +1,404 @@
+.script-editor {
+  display: flex;
+  height: 100%;
+  background: #f8f9fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.script-editor-sidebar {
+  width: 300px;
+  background: white;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  color: #212529;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.language-select {
+  padding: 4px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+}
+
+.create-btn {
+  padding: 6px 12px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.create-btn:hover {
+  background: #0056b3;
+}
+
+.search-box {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.script-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.empty-state p {
+  margin: 0 0 16px 0;
+}
+
+.create-first-btn {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.script-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f8f9fa;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.script-item:hover {
+  background: #f8f9fa;
+}
+
+.script-item.active {
+  background: #e3f2fd;
+  border-right: 3px solid #007bff;
+}
+
+.script-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.script-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.script-name {
+  font-weight: 500;
+  color: #212529;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.script-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 4px;
+}
+
+.script-language {
+  background: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.script-description {
+  font-size: 12px;
+  color: #6c757d;
+  line-height: 1.3;
+  max-height: 2.6em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.script-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.script-item:hover .script-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.action-btn.run:hover {
+  background: #d4edda;
+}
+
+.action-btn.delete:hover {
+  background: #f8d7da;
+}
+
+.script-editor-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-header {
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.script-details {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.script-name-input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  min-width: 200px;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.run-main {
+  background: #28a745;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.run-main:hover {
+  background: #218838;
+}
+
+.save {
+  background: #007bff;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.save:hover {
+  background: #0056b3;
+}
+
+.script-metadata {
+  padding: 12px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.description-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.code-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.code-textarea {
+  flex: 1;
+  padding: 20px;
+  border: none;
+  outline: none;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  background: #ffffff;
+  color: #212529;
+  resize: none;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.editor-footer {
+  padding: 12px 20px;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-info {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.help-btn {
+  background: none;
+  border: 1px solid #ced4da;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #6c757d;
+  transition: all 0.2s;
+}
+
+.help-btn:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+  color: #007bff;
+}
+
+.no-script-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 40px;
+}
+
+.welcome-content {
+  text-align: center;
+  max-width: 600px;
+}
+
+.welcome-content h2 {
+  margin: 0 0 16px 0;
+  color: #212529;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.welcome-content > p {
+  margin: 0 0 40px 0;
+  color: #6c757d;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.feature {
+  text-align: center;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.feature-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.feature h4 {
+  margin: 0 0 8px 0;
+  color: #212529;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.feature p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.get-started-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.get-started-btn:hover {
+  background: #0056b3;
+}

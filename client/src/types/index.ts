@@ -29,7 +29,10 @@ export type AppType =
   | 'mediaPlayer'
   | 'calculator'
   | 'notepad'
-  | 'settings';
+  | 'settings'
+  | 'pluginManager'
+  | 'scriptEditor'
+  | 'workspaceManager';
 
 export interface AppConfig {
   id: string;

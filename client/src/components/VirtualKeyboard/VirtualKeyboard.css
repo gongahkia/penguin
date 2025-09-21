@@ -1,0 +1,345 @@
+.virtual-keyboard {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--keyboard-bg, #f0f0f0);
+  border-top: 1px solid var(--keyboard-border, #ccc);
+  z-index: 10000;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.virtual-keyboard.light-theme {
+  --keyboard-bg: #f0f0f0;
+  --keyboard-border: #ccc;
+  --key-bg: #ffffff;
+  --key-bg-active: #e0e0e0;
+  --key-border: #d0d0d0;
+  --key-text: #333333;
+  --key-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --special-key-bg: #d0d0d0;
+  --special-key-text: #666666;
+}
+
+.virtual-keyboard.dark-theme {
+  --keyboard-bg: #2c2c2c;
+  --keyboard-border: #444444;
+  --key-bg: #404040;
+  --key-bg-active: #555555;
+  --key-border: #555555;
+  --key-text: #ffffff;
+  --key-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --special-key-bg: #555555;
+  --special-key-text: #cccccc;
+}
+
+.keyboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--keyboard-bg);
+  border-bottom: 1px solid var(--keyboard-border);
+}
+
+.keyboard-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--key-text);
+  text-transform: uppercase;
+}
+
+.caps-indicator {
+  font-size: 14px;
+}
+
+.keyboard-close {
+  background: var(--special-key-bg);
+  border: 1px solid var(--key-border);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--special-key-text);
+  font-size: 16px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.keyboard-close:active {
+  background: var(--key-bg-active);
+  transform: scale(0.95);
+}
+
+.keyboard-layout {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keyboard-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.virtual-key {
+  background: var(--key-bg);
+  border: 1px solid var(--key-border);
+  border-radius: 6px;
+  color: var(--key-text);
+  font-size: 18px;
+  font-weight: 500;
+  height: 48px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.1s ease;
+  box-shadow: var(--key-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.virtual-key:active {
+  background: var(--key-bg-active);
+  transform: scale(0.95);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.virtual-key:hover {
+  background: var(--key-bg-active);
+}
+
+.key-letter {
+  font-family: inherit;
+}
+
+.key-shift {
+  background: var(--special-key-bg);
+  color: var(--special-key-text);
+  font-size: 16px;
+}
+
+.key-shift.key-active {
+  background: #007bff;
+  color: white;
+}
+
+.key-shift.key-caps-lock {
+  background: #28a745;
+  color: white;
+}
+
+.key-backspace,
+.key-enter,
+.key-layout,
+.key-close {
+  background: var(--special-key-bg);
+  color: var(--special-key-text);
+  font-size: 16px;
+}
+
+.key-space {
+  background: var(--key-bg);
+  color: var(--key-text);
+  font-size: 14px;
+}
+
+.key-label {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.keyboard-suggestions {
+  padding: 8px 16px;
+  background: var(--keyboard-bg);
+  border-top: 1px solid var(--keyboard-border);
+}
+
+.suggestion-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.suggestion-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.suggestion-chip {
+  background: var(--key-bg);
+  border: 1px solid var(--key-border);
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: var(--key-text);
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.1s ease;
+}
+
+.suggestion-chip:active {
+  background: var(--key-bg-active);
+  transform: scale(0.95);
+}
+
+/* Animation for keyboard appearance */
+.virtual-keyboard {
+  animation: slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .virtual-key {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .keyboard-row {
+    gap: 3px;
+  }
+
+  .keyboard-layout {
+    padding: 6px;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .virtual-key {
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .keyboard-row {
+    gap: 2px;
+  }
+
+  .keyboard-layout {
+    padding: 4px;
+    gap: 3px;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (orientation: landscape) and (max-height: 500px) {
+  .virtual-keyboard {
+    height: auto;
+    max-height: 50vh;
+  }
+
+  .virtual-key {
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .keyboard-layout {
+    padding: 4px;
+    gap: 3px;
+  }
+
+  .keyboard-row {
+    gap: 2px;
+  }
+
+  .keyboard-suggestions {
+    display: none;
+  }
+}
+
+/* High DPI display adjustments */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .virtual-key {
+    border-width: 0.5px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .virtual-keyboard:not(.light-theme) {
+    --keyboard-bg: #2c2c2c;
+    --keyboard-border: #444444;
+    --key-bg: #404040;
+    --key-bg-active: #555555;
+    --key-border: #555555;
+    --key-text: #ffffff;
+    --key-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --special-key-bg: #555555;
+    --special-key-text: #cccccc;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .virtual-keyboard {
+    animation: none;
+  }
+
+  .virtual-key {
+    transition: none;
+  }
+
+  .virtual-key:active {
+    transform: none;
+  }
+
+  .suggestion-chip:active {
+    transform: none;
+  }
+}
+
+/* Focus indicators for keyboard navigation */
+.virtual-key:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Touch ripple effect */
+.virtual-key::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+  pointer-events: none;
+}
+
+.virtual-key:active::before {
+  width: 100%;
+  height: 100%;
+}

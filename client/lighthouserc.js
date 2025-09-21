@@ -1,0 +1,24 @@
+module.exports = {
+  ci: {
+    collect: {
+      startServerCommand: 'npm run preview',
+      url: ['http://localhost:4173'],
+      numberOfRuns: 3,
+      settings: {
+        chromeFlags: '--no-sandbox'
+      }
+    },
+    assert: {
+      assertions: {
+        'categories:performance': ['warn', { minScore: 0.8 }],
+        'categories:accessibility': ['warn', { minScore: 0.9 }],
+        'categories:best-practices': ['warn', { minScore: 0.8 }],
+        'categories:seo': ['warn', { minScore: 0.8 }],
+        'categories:pwa': ['warn', { minScore: 0.6 }]
+      }
+    },
+    upload: {
+      target: 'temporary-public-storage',
+    },
+  },
+};

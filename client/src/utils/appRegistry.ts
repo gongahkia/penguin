@@ -9,6 +9,9 @@ const MediaPlayer = React.lazy(() => import('@/apps/MediaPlayer/MediaPlayer'));
 const Calculator = React.lazy(() => import('@/apps/Calculator/Calculator'));
 const Notepad = React.lazy(() => import('@/apps/Notepad/Notepad'));
 const Settings = React.lazy(() => import('@/apps/Settings/Settings'));
+const PluginManager = React.lazy(() => import('@/apps/PluginManager/PluginManager'));
+const ScriptEditor = React.lazy(() => import('@/apps/ScriptEditor/ScriptEditor'));
+const WorkspaceManager = React.lazy(() => import('@/apps/WorkspaceManager/WorkspaceManager'));
 
 // App registry with configurations
 export const appConfigs: Record<AppType, AppConfig> = {
@@ -88,6 +91,39 @@ export const appConfigs: Record<AppType, AppConfig> = {
     isResizable: true,
     isDraggable: true,
     component: Settings,
+  },
+  pluginManager: {
+    id: 'pluginManager',
+    name: 'Plugin Manager',
+    type: 'pluginManager',
+    icon: '🧩',
+    defaultSize: { width: 900, height: 700 },
+    defaultPosition: { x: 150, y: 50 },
+    isResizable: true,
+    isDraggable: true,
+    component: PluginManager,
+  },
+  scriptEditor: {
+    id: 'scriptEditor',
+    name: 'Script Editor',
+    type: 'scriptEditor',
+    icon: '📜',
+    defaultSize: { width: 1000, height: 700 },
+    defaultPosition: { x: 100, y: 75 },
+    isResizable: true,
+    isDraggable: true,
+    component: ScriptEditor,
+  },
+  workspaceManager: {
+    id: 'workspaceManager',
+    name: 'Workspace Manager',
+    type: 'workspaceManager',
+    icon: '👥',
+    defaultSize: { width: 900, height: 650 },
+    defaultPosition: { x: 125, y: 100 },
+    isResizable: true,
+    isDraggable: true,
+    component: WorkspaceManager,
   },
 };
 
