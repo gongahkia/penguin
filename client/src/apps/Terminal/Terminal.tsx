@@ -12,6 +12,7 @@ import {
   clearTerminal,
 } from '@/store/slices/terminalSlice';
 import { executeCommand as executeTerminalCommand } from '@/utils/commandRegistry';
+import { advancedTerminal } from '@/utils/advancedTerminal';
 import './Terminal.css';
 
 interface TerminalProps {
@@ -77,7 +78,8 @@ const Terminal: React.FC<TerminalProps> = ({ windowId }) => {
           dispatch(executeCommand({ instanceId: windowId, command: terminal.input }));
 
           try {
-            const result = await executeTerminalCommand(terminal.input, terminal);
+            // Use advanced terminal for enhanced features
+            const result = await advancedTerminal.executeCommand(terminal.input, terminal);
 
             if (result === '__CLEAR_TERMINAL__') {
               dispatch(clearTerminal(windowId));

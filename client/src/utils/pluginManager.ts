@@ -7,6 +7,9 @@ import {
   PluginUpdateInfo,
   PluginPermission
 } from '@/types/plugin';
+import { store } from '@/store';
+import { openWindow, closeWindow } from '@/store/slices/windowSlice';
+import { findNodeByPath, createFile, createDirectory, deleteNode, updateFileContent } from '@/store/slices/fileSystemSlice';
 
 class PluginManager {
   private plugins = new Map<string, Plugin>();
@@ -340,9 +343,54 @@ class PluginManager {
       throw new Error('Filesystem permission denied');
     }
 
-    // Implementation would interface with the file system API
-    console.log(`File operation: ${operation} on ${path}`);
-    return null;
+    const state = store.getState();
+    const fileSystem = state.fileSystem;
+
+    switch (operation) {
+      case 'read': {
+        const node = findNodeByPath(fileSystem.root, path);
+        if (!node) throw new Error(`File not found: ${path}`);
+        if (node.type !== 'file') throw new Error(`Path is not a file: ${path}`);
+        return node.content || '';
+      }
+
+      case 'write': {
+        const node = findNodeByPath(fileSystem.root, path);
+        if (node && node.type === 'file') {
+          store.dispatch(updateFileContent({ path, content: content || '' }));
+        } else {
+          // Create new file
+          const parentPath = path.substring(0, path.lastIndexOf('/'));
+          const fileName = path.substring(path.lastIndexOf('/') + 1);
+          store.dispatch(createFile({ parentPath, name: fileName, content: content || '' }));
+        }
+        return;
+      }
+
+      case 'delete': {
+        const node = findNodeByPath(fileSystem.root, path);
+        if (!node) throw new Error(`File not found: ${path}`);
+        store.dispatch(deleteNode(path));
+        return;
+      }
+
+      case 'list': {
+        const node = findNodeByPath(fileSystem.root, path);
+        if (!node) throw new Error(`Directory not found: ${path}`);
+        if (node.type !== 'directory') throw new Error(`Path is not a directory: ${path}`);
+        return node.children ? node.children.map(child => child.name) : [];
+      }
+
+      case 'mkdir': {
+        const parentPath = path.substring(0, path.lastIndexOf('/'));
+        const dirName = path.substring(path.lastIndexOf('/') + 1);
+        store.dispatch(createDirectory({ parentPath, name: dirName }));
+        return;
+      }
+
+      default:
+        throw new Error(`Unsupported file operation: ${operation}`);
+    }
   }
 
   private hasPermission(type: string): boolean {
@@ -365,19 +413,85 @@ class PluginManager {
   }
 
   private async openPluginWindow(config: any): Promise<string> {
-    // Implementation would integrate with window manager
-    console.log('Opening plugin window:', config);
-    return `plugin-window-${Date.now()}`;
+    const windowId = `plugin-window-${Date.now()}`;
+
+    store.dispatch(openWindow({
+      id: windowId,
+      title: config.title,
+      appType: 'plugin',
+      position: config.position || { x: 100, y: 100 },
+      size: config.size || { width: 800, height: 600 },
+      isResizable: config.resizable !== false,
+      isDraggable: config.draggable !== false
+    }));
+
+    return windowId;
   }
 
   private async closePluginWindow(windowId: string): Promise<void> {
-    // Implementation would close the specified window
-    console.log('Closing plugin window:', windowId);
+    store.dispatch(closeWindow(windowId));
   }
 
   private async showPluginNotification(message: string, options?: any): Promise<void> {
-    // Implementation would show notification
-    console.log('Plugin notification:', message, options);
+    // Create a notification element
+    const notification = document.createElement('div');
+    notification.className = 'plugin-notification';
+    notification.innerHTML = `
+      <div class="notification-content">
+        <span class="notification-message">${message}</span>
+        <button class="notification-close">×</button>
+      </div>
+    `;
+
+    // Add styles if not already present
+    if (!document.querySelector('#plugin-notification-styles')) {
+      const styles = document.createElement('style');
+      styles.id = 'plugin-notification-styles';
+      styles.textContent = `
+        .plugin-notification {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #333;
+          color: white;
+          padding: 12px 16px;
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          z-index: 10000;
+          max-width: 300px;
+          animation: slideIn 0.3s ease-out;
+        }
+        .notification-content {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .notification-close {
+          background: none;
+          border: none;
+          color: white;
+          font-size: 18px;
+          cursor: pointer;
+          padding: 0;
+          margin-left: auto;
+        }
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(styles);
+    }
+
+    document.body.appendChild(notification);
+
+    // Auto-remove after 5 seconds or when clicked
+    const remove = () => {
+      notification.remove();
+    };
+
+    notification.querySelector('.notification-close')?.addEventListener('click', remove);
+    setTimeout(remove, options?.duration || 5000);
   }
 
   private createPluginStorage(pluginId: string) {

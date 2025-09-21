@@ -32,7 +32,8 @@ export type AppType =
   | 'settings'
   | 'pluginManager'
   | 'scriptEditor'
-  | 'workspaceManager';
+  | 'workspaceManager'
+  | 'plugin'; // Generic type for plugin windows
 
 export interface AppConfig {
   id: string;
