@@ -1,5 +1,15 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { FileSystemNode } from '@/types';
+import { FileSystemNode, FilePermissions, FileOwnership } from '@/types';
+import {
+  createEnhancedNode,
+  checkPermission,
+  resolveSymlink,
+  getCurrentUser,
+  isValidFilename,
+  calculateChecksum,
+  createDefaultPermissions,
+  createDefaultOwnership
+} from '@/utils/fileSystemUtils';
 
 interface FileSystemSliceState {
   root: FileSystemNode;
@@ -8,83 +18,103 @@ interface FileSystemSliceState {
   clipboardAction: 'copy' | 'cut' | null;
 }
 
-const createInitialFileSystem = (): FileSystemNode => ({
-  name: 'root',
-  type: 'directory',
-  path: '/',
-  parentPath: null,
-  lastModified: new Date(),
-  created: new Date(),
-  children: [
-    {
-      name: 'home',
-      type: 'directory',
-      path: '/home',
-      parentPath: '/',
-      lastModified: new Date(),
-      created: new Date(),
-      children: [
-        {
-          name: 'user',
-          type: 'directory',
-          path: '/home/user',
-          parentPath: '/home',
-          lastModified: new Date(),
-          created: new Date(),
-          children: [
-            {
-              name: 'Documents',
-              type: 'directory',
-              path: '/home/user/Documents',
-              parentPath: '/home/user',
-              lastModified: new Date(),
-              created: new Date(),
-              children: [
-                {
-                  name: 'welcome.txt',
-                  type: 'file',
-                  path: '/home/user/Documents/welcome.txt',
-                  parentPath: '/home/user/Documents',
-                  content: 'Welcome to Penguin OS!\n\nThis is a custom operating system simulation running in your browser.\n\nFeatures:\n- Interactive desktop environment\n- Terminal with command line interface\n- File system simulation\n- Multiple applications\n\nEnjoy exploring!',
-                  size: 245,
-                  lastModified: new Date(),
-                  created: new Date(),
-                },
-              ],
-            },
-            {
-              name: 'Desktop',
-              type: 'directory',
-              path: '/home/user/Desktop',
-              parentPath: '/home/user',
-              lastModified: new Date(),
-              created: new Date(),
-              children: [],
-            },
-          ],
-        },
-      ],
+const createInitialFileSystem = (): FileSystemNode => {
+  const welcomeContent = `Welcome to Penguin OS!
+
+This is a custom operating system simulation running in your browser.
+
+Features:
+- Interactive desktop environment
+- Terminal with command line interface
+- Advanced file system with permissions and symlinks
+- Multiple applications
+- Plugin system
+
+Enjoy exploring!`;
+
+  const root = createEnhancedNode('root', 'directory', '/', null, {
+    permissions: {
+      owner: ['read', 'write', 'execute'],
+      group: ['read', 'execute'],
+      others: ['read', 'execute'],
+      numeric: '755'
     },
-    {
-      name: 'bin',
-      type: 'directory',
-      path: '/bin',
-      parentPath: '/',
-      lastModified: new Date(),
-      created: new Date(),
-      children: [],
+    ownership: { owner: 'root', group: 'root', uid: 0, gid: 0 }
+  });
+
+  const home = createEnhancedNode('home', 'directory', '/home', '/', {
+    permissions: {
+      owner: ['read', 'write', 'execute'],
+      group: ['read', 'execute'],
+      others: ['read', 'execute'],
+      numeric: '755'
     },
-    {
-      name: 'etc',
-      type: 'directory',
-      path: '/etc',
-      parentPath: '/',
-      lastModified: new Date(),
-      created: new Date(),
-      children: [],
+    ownership: { owner: 'root', group: 'root', uid: 0, gid: 0 }
+  });
+
+  const user = createEnhancedNode('user', 'directory', '/home/user', '/home');
+  const documents = createEnhancedNode('Documents', 'directory', '/home/user/Documents', '/home/user');
+  const desktop = createEnhancedNode('Desktop', 'directory', '/home/user/Desktop', '/home/user');
+  const welcomeFile = createEnhancedNode('welcome.txt', 'file', '/home/user/Documents/welcome.txt', '/home/user/Documents', {
+    content: welcomeContent
+  });
+
+  // Create system directories
+  const bin = createEnhancedNode('bin', 'directory', '/bin', '/', {
+    permissions: {
+      owner: ['read', 'write', 'execute'],
+      group: ['read', 'execute'],
+      others: ['read', 'execute'],
+      numeric: '755'
     },
-  ],
-});
+    ownership: { owner: 'root', group: 'root', uid: 0, gid: 0 }
+  });
+
+  const etc = createEnhancedNode('etc', 'directory', '/etc', '/', {
+    permissions: {
+      owner: ['read', 'write', 'execute'],
+      group: ['read', 'execute'],
+      others: ['read'],
+      numeric: '754'
+    },
+    ownership: { owner: 'root', group: 'root', uid: 0, gid: 0 }
+  });
+
+  const tmp = createEnhancedNode('tmp', 'directory', '/tmp', '/', {
+    permissions: {
+      owner: ['read', 'write', 'execute'],
+      group: ['read', 'write', 'execute'],
+      others: ['read', 'write', 'execute'],
+      numeric: '777'
+    },
+    ownership: { owner: 'root', group: 'root', uid: 0, gid: 0 }
+  });
+
+  // Create some example symlinks
+  const desktopWelcome = createEnhancedNode('welcome_link.txt', 'symlink', '/home/user/Desktop/welcome_link.txt', '/home/user/Desktop', {
+    linkTarget: '/home/user/Documents/welcome.txt'
+  });
+
+  // Add some hidden files
+  const bashrc = createEnhancedNode('.bashrc', 'file', '/home/user/.bashrc', '/home/user', {
+    content: '# Penguin OS bash configuration\nexport PS1="$ "\nalias ll="ls -la"\nalias la="ls -A"\n',
+    isHidden: true
+  });
+
+  const profile = createEnhancedNode('.profile', 'file', '/home/user/.profile', '/home/user', {
+    content: '# User profile for Penguin OS\nexport PATH="/bin:/usr/bin:/usr/local/bin"\n',
+    isHidden: true
+  });
+
+  // Build the tree structure
+  documents.children = [welcomeFile];
+  desktop.children = [desktopWelcome];
+  user.children = [documents, desktop, bashrc, profile];
+  home.children = [user];
+  root.children = [home, bin, etc, tmp];
+
+  return root;
+};
 
 const initialState: FileSystemSliceState = {
   root: createInitialFileSystem(),
@@ -117,46 +147,119 @@ const fileSystemSlice = createSlice({
       }
     },
 
-    createFile: (state, action: PayloadAction<{ parentPath: string; name: string; content?: string }>) => {
-      const { parentPath, name, content = '' } = action.payload;
+    createFile: (state, action: PayloadAction<{
+      parentPath: string;
+      name: string;
+      content?: string;
+      permissions?: FilePermissions;
+      ownership?: FileOwnership;
+    }>) => {
+      const { parentPath, name, content = '', permissions, ownership } = action.payload;
       const parentNode = findNodeByPath(state.root, parentPath);
-      
-      if (parentNode && parentNode.type === 'directory') {
-        const newFile: FileSystemNode = {
-          name,
-          type: 'file',
-          path: `${parentPath}/${name}`,
-          parentPath,
+
+      if (!isValidFilename(name)) return;
+
+      if (parentNode && parentNode.type === 'directory' &&
+          checkPermission(parentNode, 'write')) {
+
+        const newFile = createEnhancedNode(name, 'file', `${parentPath}/${name}`, parentPath, {
           content,
-          size: content.length,
-          lastModified: new Date(),
-          created: new Date(),
-        };
-        
+          permissions,
+          ownership
+        });
+
         if (!parentNode.children) parentNode.children = [];
         parentNode.children.push(newFile);
         parentNode.lastModified = new Date();
+        parentNode.accessed = new Date();
       }
     },
 
-    createDirectory: (state, action: PayloadAction<{ parentPath: string; name: string }>) => {
-      const { parentPath, name } = action.payload;
+    createDirectory: (state, action: PayloadAction<{
+      parentPath: string;
+      name: string;
+      permissions?: FilePermissions;
+      ownership?: FileOwnership;
+    }>) => {
+      const { parentPath, name, permissions, ownership } = action.payload;
       const parentNode = findNodeByPath(state.root, parentPath);
-      
-      if (parentNode && parentNode.type === 'directory') {
-        const newDir: FileSystemNode = {
-          name,
-          type: 'directory',
-          path: `${parentPath}/${name}`,
-          parentPath,
-          lastModified: new Date(),
-          created: new Date(),
-          children: [],
-        };
-        
+
+      if (!isValidFilename(name)) return;
+
+      if (parentNode && parentNode.type === 'directory' &&
+          checkPermission(parentNode, 'write')) {
+
+        const newDir = createEnhancedNode(name, 'directory', `${parentPath}/${name}`, parentPath, {
+          permissions,
+          ownership
+        });
+
         if (!parentNode.children) parentNode.children = [];
         parentNode.children.push(newDir);
         parentNode.lastModified = new Date();
+        parentNode.accessed = new Date();
+      }
+    },
+
+    createSymlink: (state, action: PayloadAction<{
+      parentPath: string;
+      name: string;
+      linkTarget: string;
+      permissions?: FilePermissions;
+      ownership?: FileOwnership;
+    }>) => {
+      const { parentPath, name, linkTarget, permissions, ownership } = action.payload;
+      const parentNode = findNodeByPath(state.root, parentPath);
+
+      if (!isValidFilename(name)) return;
+
+      if (parentNode && parentNode.type === 'directory' &&
+          checkPermission(parentNode, 'write')) {
+
+        const newSymlink = createEnhancedNode(name, 'symlink', `${parentPath}/${name}`, parentPath, {
+          linkTarget,
+          permissions,
+          ownership
+        });
+
+        if (!parentNode.children) parentNode.children = [];
+        parentNode.children.push(newSymlink);
+        parentNode.lastModified = new Date();
+        parentNode.accessed = new Date();
+      }
+    },
+
+    createHardlink: (state, action: PayloadAction<{
+      parentPath: string;
+      name: string;
+      linkTarget: string;
+    }>) => {
+      const { parentPath, name, linkTarget } = action.payload;
+      const parentNode = findNodeByPath(state.root, parentPath);
+      const targetNode = findNodeByPath(state.root, linkTarget);
+
+      if (!isValidFilename(name)) return;
+
+      if (parentNode && parentNode.type === 'directory' &&
+          checkPermission(parentNode, 'write') &&
+          targetNode && targetNode.type === 'file') {
+
+        const newHardlink = createEnhancedNode(name, 'hardlink', `${parentPath}/${name}`, parentPath, {
+          content: targetNode.content,
+          linkTarget,
+          permissions: targetNode.permissions,
+          ownership: targetNode.ownership
+        });
+
+        // Update link count for target
+        targetNode.linkCount++;
+        newHardlink.linkCount = targetNode.linkCount;
+        newHardlink.inode = targetNode.inode;
+
+        if (!parentNode.children) parentNode.children = [];
+        parentNode.children.push(newHardlink);
+        parentNode.lastModified = new Date();
+        parentNode.accessed = new Date();
       }
     },
 
@@ -207,11 +310,97 @@ const fileSystemSlice = createSlice({
     updateFileContent: (state, action: PayloadAction<{ path: string; content: string }>) => {
       const { path, content } = action.payload;
       const node = findNodeByPath(state.root, path);
-      
-      if (node && node.type === 'file') {
+
+      if (node && (node.type === 'file' || node.type === 'hardlink') &&
+          checkPermission(node, 'write')) {
         node.content = content;
         node.size = content.length;
         node.lastModified = new Date();
+        node.accessed = new Date();
+        node.checksum = calculateChecksum(content);
+
+        // Update all hard links pointing to the same inode
+        if (node.type === 'hardlink' || node.linkCount > 1) {
+          const updateHardlinks = (currentNode: FileSystemNode) => {
+            if (currentNode.children) {
+              currentNode.children.forEach(child => {
+                if (child.inode === node.inode && child.path !== path) {
+                  child.content = content;
+                  child.size = content.length;
+                  child.lastModified = new Date();
+                  child.checksum = node.checksum;
+                }
+                updateHardlinks(child);
+              });
+            }
+          };
+          updateHardlinks(state.root);
+        }
+      }
+    },
+
+    changePermissions: (state, action: PayloadAction<{ path: string; permissions: FilePermissions }>) => {
+      const { path, permissions } = action.payload;
+      const node = findNodeByPath(state.root, path);
+      const currentUser = getCurrentUser();
+
+      if (node && (node.ownership.owner === currentUser || currentUser === 'root')) {
+        node.permissions = permissions;
+        node.lastModified = new Date();
+      }
+    },
+
+    changeOwnership: (state, action: PayloadAction<{ path: string; ownership: FileOwnership }>) => {
+      const { path, ownership } = action.payload;
+      const node = findNodeByPath(state.root, path);
+      const currentUser = getCurrentUser();
+
+      if (node && (node.ownership.owner === currentUser || currentUser === 'root')) {
+        node.ownership = ownership;
+        node.lastModified = new Date();
+      }
+    },
+
+    addTag: (state, action: PayloadAction<{ path: string; tag: string }>) => {
+      const { path, tag } = action.payload;
+      const node = findNodeByPath(state.root, path);
+
+      if (node && checkPermission(node, 'write')) {
+        if (!node.tags) node.tags = [];
+        if (!node.tags.includes(tag)) {
+          node.tags.push(tag);
+          node.lastModified = new Date();
+        }
+      }
+    },
+
+    removeTag: (state, action: PayloadAction<{ path: string; tag: string }>) => {
+      const { path, tag } = action.payload;
+      const node = findNodeByPath(state.root, path);
+
+      if (node && checkPermission(node, 'write') && node.tags) {
+        node.tags = node.tags.filter(t => t !== tag);
+        node.lastModified = new Date();
+      }
+    },
+
+    setMetadata: (state, action: PayloadAction<{ path: string; key: string; value: any }>) => {
+      const { path, key, value } = action.payload;
+      const node = findNodeByPath(state.root, path);
+
+      if (node && checkPermission(node, 'write')) {
+        if (!node.metadata) node.metadata = {};
+        node.metadata[key] = value;
+        node.lastModified = new Date();
+      }
+    },
+
+    accessNode: (state, action: PayloadAction<string>) => {
+      const path = action.payload;
+      const node = findNodeByPath(state.root, path);
+
+      if (node && checkPermission(node, 'read')) {
+        node.accessed = new Date();
       }
     },
 
@@ -268,9 +457,17 @@ export const {
   navigateToPath,
   createFile,
   createDirectory,
+  createSymlink,
+  createHardlink,
   deleteNode,
   renameNode,
   updateFileContent,
+  changePermissions,
+  changeOwnership,
+  addTag,
+  removeTag,
+  setMetadata,
+  accessNode,
   copyToClipboard,
   cutToClipboard,
   pasteFromClipboard,
