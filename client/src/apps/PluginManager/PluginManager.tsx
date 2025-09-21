@@ -13,28 +13,49 @@ const PluginManager: React.FC<PluginManagerProps> = ({ windowId }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [installStatus, setInstallStatus] = useState<string>('');
 
   useEffect(() => {
     loadPlugins();
 
-    const handlePluginEvent = () => {
+    const handlePluginEvent = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      addDebugLog(`Plugin event: ${event.type} - ${customEvent.detail?.pluginId || 'unknown'}`);
       loadPlugins();
+    };
+
+    const handlePluginError = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      addDebugLog(`Plugin error: ${customEvent.detail?.error || 'Unknown error'}`);
     };
 
     pluginManager.addEventListener('plugin-enabled', handlePluginEvent);
     pluginManager.addEventListener('plugin-disabled', handlePluginEvent);
     pluginManager.addEventListener('plugin-uninstalled', handlePluginEvent);
+    pluginManager.addEventListener('plugin-error', handlePluginError);
 
     return () => {
       pluginManager.removeEventListener('plugin-enabled', handlePluginEvent);
       pluginManager.removeEventListener('plugin-disabled', handlePluginEvent);
       pluginManager.removeEventListener('plugin-uninstalled', handlePluginEvent);
+      pluginManager.removeEventListener('plugin-error', handlePluginError);
     };
   }, []);
 
+  const addDebugLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugLogs(prev => [...prev.slice(-99), `[${timestamp}] ${message}`]); // Keep last 100 logs
+  };
+
   const loadPlugins = () => {
-    const installedPlugins = pluginManager.getInstalledPlugins();
-    setPlugins(installedPlugins);
+    try {
+      const installedPlugins = pluginManager.getInstalledPlugins();
+      setPlugins(installedPlugins);
+      addDebugLog(`Loaded ${installedPlugins.length} plugins`);
+    } catch (error) {
+      addDebugLog(`Error loading plugins: ${error}`);
+    }
   };
 
   const handlePluginToggle = async (pluginId: string) => {
@@ -75,12 +96,20 @@ const PluginManager: React.FC<PluginManagerProps> = ({ windowId }) => {
     if (!file) return;
 
     setIsLoading(true);
+    setInstallStatus('Reading plugin file...');
+    addDebugLog(`Installing plugin from file: ${file.name}`);
+
     try {
+      setInstallStatus('Installing plugin...');
       await pluginManager.installPlugin({ file, autoEnable: true });
-      alert('Plugin installed successfully!');
+      setInstallStatus('Plugin installed successfully!');
+      addDebugLog(`Plugin installed successfully: ${file.name}`);
+      setTimeout(() => setInstallStatus(''), 3000);
     } catch (error) {
-      console.error('Failed to install plugin:', error);
-      alert(`Failed to install plugin: ${error}`);
+      const errorMessage = `Failed to install plugin: ${error}`;
+      setInstallStatus(errorMessage);
+      addDebugLog(errorMessage);
+      setTimeout(() => setInstallStatus(''), 5000);
     } finally {
       setIsLoading(false);
       event.target.value = '';
@@ -198,13 +227,31 @@ const PluginManager: React.FC<PluginManagerProps> = ({ windowId }) => {
 
             <div className="dev-section">
               <h3>Debug Console</h3>
+              <div className="debug-controls">
+                <button
+                  className="dev-link"
+                  onClick={() => setDebugLogs([])}
+                  style={{ marginBottom: '12px' }}
+                >
+                  Clear Logs
+                </button>
+              </div>
               <textarea
                 className="debug-console"
+                value={debugLogs.join('\n')}
                 placeholder="Plugin debug output will appear here..."
                 readOnly
                 rows={10}
               />
             </div>
+
+            {installStatus && (
+              <div className="dev-section">
+                <div className={`install-status ${installStatus.includes('Failed') ? 'error' : 'success'}`}>
+                  {installStatus}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

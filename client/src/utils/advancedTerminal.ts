@@ -1,630 +1,476 @@
-import { TerminalInstance } from '@/types';
-import { commandRegistry, executeCommand as basicExecuteCommand } from './commandRegistry';
+import { TerminalCommand, TerminalInstance } from '@/types';
+import { commandRegistry, executeCommand as baseExecuteCommand } from './commandRegistry';
+import { store } from '@/store';
+import { findNodeByPath, createFile, updateFileContent } from '@/store/slices/fileSystemSlice';
 
-interface TerminalVariable {
-  name: string;
-  value: string;
-  type: 'string' | 'number' | 'boolean';
-  readonly?: boolean;
-}
-
-interface TerminalScript {
-  name: string;
-  content: string;
-  variables: Record<string, TerminalVariable>;
-}
-
-interface PipelineStage {
-  command: string;
-  args: string[];
-  input?: string;
-}
-
-class AdvancedTerminalProcessor {
-  private variables = new Map<string, TerminalVariable>();
-  private scripts = new Map<string, TerminalScript>();
-  private aliases = new Map<string, string>();
-  private history: string[] = [];
-  private historyIndex = -1;
+// Enhanced command execution with piping and scripting support
+export class AdvancedTerminal {
+  private variables: Map<string, string> = new Map();
+  private aliases: Map<string, string> = new Map();
+  private scriptStack: string[] = [];
 
   constructor() {
-    this.initializeBuiltInVariables();
-    this.initializeAdvancedCommands();
-  }
-
-  private initializeBuiltInVariables() {
-    // Built-in system variables
-    this.setVariable('USER', 'user', 'string', true);
-    this.setVariable('HOME', '/home/user', 'string', true);
-    this.setVariable('PATH', '/bin:/usr/bin:/usr/local/bin', 'string', true);
-    this.setVariable('SHELL', '/bin/bash', 'string', true);
-    this.setVariable('PWD', '/', 'string', false);
-    this.setVariable('OLDPWD', '/', 'string', false);
-  }
-
-  private initializeAdvancedCommands() {
-    // Add advanced commands to the registry
-    commandRegistry.export = {
-      name: 'export',
-      description: 'Sets environment variables',
-      usage: 'export VAR=value',
-      handler: (args) => this.handleExport(args)
-    };
-
-    commandRegistry.unset = {
-      name: 'unset',
-      description: 'Unsets environment variables',
-      usage: 'unset VAR',
-      handler: (args) => this.handleUnset(args)
-    };
-
-    commandRegistry.env = {
-      name: 'env',
-      description: 'Shows environment variables',
-      usage: 'env',
-      handler: () => this.handleEnv()
-    };
-
-    commandRegistry.alias = {
-      name: 'alias',
-      description: 'Creates command aliases',
-      usage: 'alias name=command',
-      handler: (args) => this.handleAlias(args)
-    };
-
-    commandRegistry.unalias = {
-      name: 'unalias',
-      description: 'Removes command aliases',
-      usage: 'unalias name',
-      handler: (args) => this.handleUnalias(args)
-    };
-
-    commandRegistry.history = {
-      name: 'history',
-      description: 'Shows command history',
-      usage: 'history',
-      handler: () => this.handleHistory()
-    };
-
-    commandRegistry.grep = {
-      name: 'grep',
-      description: 'Search text patterns',
-      usage: 'grep pattern [file]',
-      handler: (args) => this.handleGrep(args)
-    };
-
-    commandRegistry.sort = {
-      name: 'sort',
-      description: 'Sort lines of text',
-      usage: 'sort [file]',
-      handler: (args) => this.handleSort(args)
-    };
-
-    commandRegistry.wc = {
-      name: 'wc',
-      description: 'Count lines, words, characters',
-      usage: 'wc [file]',
-      handler: (args) => this.handleWc(args)
-    };
-
-    commandRegistry.head = {
-      name: 'head',
-      description: 'Show first lines of file',
-      usage: 'head [-n lines] [file]',
-      handler: (args) => this.handleHead(args)
-    };
-
-    commandRegistry.tail = {
-      name: 'tail',
-      description: 'Show last lines of file',
-      usage: 'tail [-n lines] [file]',
-      handler: (args) => this.handleTail(args)
-    };
-
-    commandRegistry.script = {
-      name: 'script',
-      description: 'Execute or manage scripts',
-      usage: 'script [create|run|list|delete] [name]',
-      handler: (args) => this.handleScript(args)
-    };
-
-    commandRegistry.if = {
-      name: 'if',
-      description: 'Conditional execution',
-      usage: 'if condition; then command; fi',
-      handler: (args) => this.handleIf(args)
-    };
-
-    commandRegistry.for = {
-      name: 'for',
-      description: 'Loop execution',
-      usage: 'for var in list; do command; done',
-      handler: (args) => this.handleFor(args)
-    };
+    // Initialize default environment variables
+    this.variables.set('PS1', '$ ');
+    this.variables.set('HOME', '/home/user');
+    this.variables.set('USER', 'user');
+    this.variables.set('PATH', '/bin:/usr/bin');
   }
 
   async executeCommand(commandLine: string, terminal: TerminalInstance): Promise<string> {
-    // Add to history
-    if (commandLine.trim()) {
-      this.history.push(commandLine);
-      this.historyIndex = this.history.length;
-    }
+    const trimmed = commandLine.trim();
+    if (!trimmed) return '';
 
-    // Handle piping
-    if (commandLine.includes('|')) {
-      return this.executePipeline(commandLine, terminal);
+    // Handle variable assignment
+    if (this.isVariableAssignment(trimmed)) {
+      return this.handleVariableAssignment(trimmed);
     }
-
-    // Handle redirection
-    if (commandLine.includes('>') || commandLine.includes('>>')) {
-      return this.executeWithRedirection(commandLine, terminal);
-    }
-
-    // Handle variable substitution
-    const expandedCommand = this.expandVariables(commandLine);
 
     // Handle aliases
-    const resolvedCommand = this.resolveAliases(expandedCommand);
-
-    // Handle conditional execution (&&, ||)
-    if (resolvedCommand.includes('&&') || resolvedCommand.includes('||')) {
-      return this.executeConditional(resolvedCommand, terminal);
+    if (trimmed.startsWith('alias ')) {
+      return this.handleAlias(trimmed);
     }
 
-    // Handle background execution (&)
-    if (resolvedCommand.endsWith('&')) {
-      return this.executeBackground(resolvedCommand.slice(0, -1).trim(), terminal);
+    // Check for pipes
+    if (trimmed.includes('|')) {
+      return this.executePipeCommand(trimmed, terminal);
     }
 
-    // Execute single command
+    // Check for output redirection
+    if (trimmed.includes('>')) {
+      return this.executeRedirectionCommand(trimmed, terminal);
+    }
+
+    // Check for command chaining
+    if (trimmed.includes('&&') || trimmed.includes('||') || trimmed.includes(';')) {
+      return this.executeChainedCommands(trimmed, terminal);
+    }
+
+    // Handle script execution
+    if (trimmed.endsWith('.sh') || trimmed.startsWith('./')) {
+      return this.executeScript(trimmed, terminal);
+    }
+
+    // Expand variables and execute single command
+    const expandedCommand = this.expandVariables(trimmed);
+    const resolvedCommand = this.resolveAlias(expandedCommand);
+
     return this.executeSingleCommand(resolvedCommand, terminal);
   }
 
-  private async executePipeline(commandLine: string, terminal: TerminalInstance): Promise<string> {
-    const stages = this.parsePipeline(commandLine);
-    let output = '';
-
-    for (let i = 0; i < stages.length; i++) {
-      const stage = stages[i];
-
-      if (i > 0) {
-        stage.input = output;
-      }
-
-      try {
-        output = await this.executeStage(stage, terminal);
-      } catch (error) {
-        return `Pipeline error at stage ${i + 1}: ${error}`;
-      }
-    }
-
-    return output;
+  private isVariableAssignment(command: string): boolean {
+    return /^[A-Za-z_][A-Za-z0-9_]*=/.test(command);
   }
 
-  private parsePipeline(commandLine: string): PipelineStage[] {
-    const commands = commandLine.split('|').map(cmd => cmd.trim());
+  private handleVariableAssignment(command: string): string {
+    const [varName, ...valueParts] = command.split('=');
+    const value = valueParts.join('=').replace(/^["']|["']$/g, ''); // Remove quotes
+    this.variables.set(varName, value);
+    return '';
+  }
 
-    return commands.map(cmd => {
-      const parts = this.parseCommand(cmd);
-      return {
-        command: parts[0],
-        args: parts.slice(1)
-      };
+  private handleAlias(command: string): string {
+    const parts = command.split(' ').slice(1); // Remove 'alias'
+
+    if (parts.length === 0) {
+      // List all aliases
+      if (this.aliases.size === 0) {
+        return 'No aliases defined';
+      }
+
+      const aliasList = Array.from(this.aliases.entries())
+        .map(([name, value]) => `${name}='${value}'`)
+        .join('\n');
+      return aliasList;
+    }
+
+    const aliasDefinition = parts.join(' ');
+    const [name, ...commandParts] = aliasDefinition.split('=');
+
+    if (commandParts.length === 0) {
+      // Show specific alias
+      const value = this.aliases.get(name);
+      return value ? `${name}='${value}'` : `alias: ${name}: not found`;
+    }
+
+    const aliasCommand = commandParts.join('=').replace(/^["']|["']$/g, '');
+    this.aliases.set(name, aliasCommand);
+    return `alias ${name}='${aliasCommand}'`;
+  }
+
+  private expandVariables(command: string): string {
+    return command.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (match, varName) => {
+      return this.variables.get(varName) || '';
+    }).replace(/\$\{([^}]+)\}/g, (match, varName) => {
+      return this.variables.get(varName) || '';
     });
   }
 
-  private async executeStage(stage: PipelineStage, terminal: TerminalInstance): Promise<string> {
-    // Handle built-in pipeline commands
-    switch (stage.command) {
-      case 'grep':
-        return this.pipeGrep(stage.args, stage.input || '');
-      case 'sort':
-        return this.pipeSort(stage.args, stage.input || '');
-      case 'wc':
-        return this.pipeWc(stage.args, stage.input || '');
-      case 'head':
-        return this.pipeHead(stage.args, stage.input || '');
-      case 'tail':
-        return this.pipeTail(stage.args, stage.input || '');
+  private resolveAlias(command: string): string {
+    const parts = command.split(' ');
+    const commandName = parts[0];
+    const aliasCommand = this.aliases.get(commandName);
+
+    if (aliasCommand) {
+      return `${aliasCommand} ${parts.slice(1).join(' ')}`.trim();
+    }
+
+    return command;
+  }
+
+  private async executePipeCommand(commandLine: string, terminal: TerminalInstance): Promise<string> {
+    const commands = commandLine.split('|').map(cmd => cmd.trim());
+    let input = '';
+
+    for (let i = 0; i < commands.length; i++) {
+      const command = commands[i];
+
+      if (i === 0) {
+        // First command
+        input = await this.executeSingleCommand(command, terminal);
+      } else {
+        // Subsequent commands receive input from previous command
+        input = await this.executePipedCommand(command, input, terminal);
+      }
+    }
+
+    return input;
+  }
+
+  private async executePipedCommand(command: string, input: string, terminal: TerminalInstance): Promise<string> {
+    const parts = command.split(/\s+/);
+    const commandName = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    // Handle special pipe commands
+    switch (commandName) {
+      case 'grep': {
+        const pattern = args[0];
+        if (!pattern) return 'grep: missing pattern';
+
+        const regex = new RegExp(pattern, 'i');
+        return input.split('\n')
+          .filter(line => regex.test(line))
+          .join('\n');
+      }
+
+      case 'sort': {
+        return input.split('\n')
+          .sort((a, b) => a.localeCompare(b))
+          .join('\n');
+      }
+
+      case 'uniq': {
+        const lines = input.split('\n');
+        const unique = [...new Set(lines)];
+        return unique.join('\n');
+      }
+
+      case 'head': {
+        const count = args[0] ? parseInt(args[0]) : 10;
+        return input.split('\n')
+          .slice(0, count)
+          .join('\n');
+      }
+
+      case 'tail': {
+        const count = args[0] ? parseInt(args[0]) : 10;
+        const lines = input.split('\n');
+        return lines.slice(-count).join('\n');
+      }
+
+      case 'wc': {
+        const lines = input.split('\n').filter(line => line.length > 0);
+        const words = input.split(/\s+/).filter(word => word.length > 0);
+        const chars = input.length;
+
+        if (args.includes('-l')) return lines.length.toString();
+        if (args.includes('-w')) return words.length.toString();
+        if (args.includes('-c')) return chars.toString();
+
+        return `${lines.length} ${words.length} ${chars}`;
+      }
+
+      case 'tr': {
+        if (args.length < 2) return 'tr: missing operands';
+        const from = args[0];
+        const to = args[1];
+        return input.replace(new RegExp(from, 'g'), to);
+      }
+
       default:
-        // Execute regular command and pass input if needed
-        const fullCommand = `${stage.command} ${stage.args.join(' ')}`;
-        return await this.executeSingleCommand(fullCommand, terminal);
+        // For other commands, they receive the input as stdin
+        return await this.executeSingleCommand(command, terminal, input);
     }
   }
 
-  private async executeWithRedirection(commandLine: string, terminal: TerminalInstance): Promise<string> {
-    const redirectMatch = commandLine.match(/(.+?)\s*(>>?)\s*(.+)/);
-    if (!redirectMatch) {
-      return 'Invalid redirection syntax';
+  private async executeRedirectionCommand(commandLine: string, terminal: TerminalInstance): Promise<string> {
+    let [command, outputFile] = commandLine.split('>').map(s => s.trim());
+    const isAppend = command.includes('>>');
+
+    if (isAppend) {
+      [command, outputFile] = commandLine.split('>>').map(s => s.trim());
     }
 
-    const [, command, operator, target] = redirectMatch;
-    const append = operator === '>>';
+    if (!outputFile) {
+      return 'Syntax error: missing output file';
+    }
+
+    // Execute the command
+    const output = await this.executeSingleCommand(command, terminal);
+
+    // Write to file
+    const state = store.getState();
+    const currentPath = state.fileSystem.currentPath;
+    const filePath = outputFile.startsWith('/') ? outputFile : `${currentPath}/${outputFile}`;
 
     try {
-      const output = await this.executeSingleCommand(command.trim(), terminal);
+      const existingNode = findNodeByPath(state.fileSystem.root, filePath);
 
-      // In a real implementation, this would write to the file system
-      // For now, we'll simulate it
-      console.log(`${append ? 'Appending' : 'Writing'} to ${target}: ${output}`);
-
-      return `Output ${append ? 'appended' : 'written'} to ${target}`;
-    } catch (error) {
-      return `Redirection error: ${error}`;
-    }
-  }
-
-  private async executeConditional(commandLine: string, terminal: TerminalInstance): Promise<string> {
-    let parts: string[];
-    let isOr = false;
-
-    if (commandLine.includes('&&')) {
-      parts = commandLine.split('&&').map(p => p.trim());
-    } else {
-      parts = commandLine.split('||').map(p => p.trim());
-      isOr = true;
-    }
-
-    let lastResult = '';
-    let lastSuccess = true;
-
-    for (const part of parts) {
-      if (isOr && lastSuccess) {
-        break; // Skip remaining commands in OR chain if previous succeeded
-      }
-      if (!isOr && !lastSuccess) {
-        break; // Skip remaining commands in AND chain if previous failed
-      }
-
-      try {
-        lastResult = await this.executeSingleCommand(part, terminal);
-        lastSuccess = !lastResult.toLowerCase().includes('error');
-      } catch (error) {
-        lastSuccess = false;
-        lastResult = `Error: ${error}`;
-        if (!isOr) break;
-      }
-    }
-
-    return lastResult;
-  }
-
-  private async executeBackground(commandLine: string, terminal: TerminalInstance): Promise<string> {
-    // Simulate background execution
-    setTimeout(async () => {
-      try {
-        await this.executeSingleCommand(commandLine, terminal);
-      } catch (error) {
-        console.error('Background process error:', error);
-      }
-    }, 0);
-
-    return `Started background process: ${commandLine}`;
-  }
-
-  private async executeSingleCommand(commandLine: string, terminal: TerminalInstance): Promise<string> {
-    return await basicExecuteCommand(commandLine, terminal);
-  }
-
-  private expandVariables(commandLine: string): string {
-    return commandLine.replace(/\$([A-Z_][A-Z0-9_]*)/g, (match, varName) => {
-      const variable = this.variables.get(varName);
-      return variable ? variable.value : match;
-    });
-  }
-
-  private resolveAliases(commandLine: string): string {
-    const parts = this.parseCommand(commandLine);
-    const command = parts[0];
-
-    if (this.aliases.has(command)) {
-      const alias = this.aliases.get(command)!;
-      return `${alias} ${parts.slice(1).join(' ')}`;
-    }
-
-    return commandLine;
-  }
-
-  private parseCommand(commandLine: string): string[] {
-    const parts: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    let quoteChar = '';
-
-    for (let i = 0; i < commandLine.length; i++) {
-      const char = commandLine[i];
-
-      if (!inQuotes && (char === '"' || char === "'")) {
-        inQuotes = true;
-        quoteChar = char;
-      } else if (inQuotes && char === quoteChar) {
-        inQuotes = false;
-        quoteChar = '';
-      } else if (!inQuotes && char === ' ') {
-        if (current) {
-          parts.push(current);
-          current = '';
-        }
+      if (existingNode && existingNode.type === 'file') {
+        // File exists
+        const newContent = isAppend ? (existingNode.content || '') + '\n' + output : output;
+        store.dispatch(updateFileContent({ path: filePath, content: newContent }));
       } else {
-        current += char;
+        // Create new file
+        const parentPath = filePath.substring(0, filePath.lastIndexOf('/'));
+        const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+        store.dispatch(createFile({ parentPath, name: fileName, content: output }));
+      }
+
+      return `Output redirected to ${outputFile}`;
+    } catch (error) {
+      return `Error writing to file: ${error}`;
+    }
+  }
+
+  private async executeChainedCommands(commandLine: string, terminal: TerminalInstance): Promise<string> {
+    const results: string[] = [];
+
+    // Split by operators while preserving them
+    const parts = commandLine.split(/(\s*(?:&&|\|\||\;)\s*)/).filter(part => part.trim());
+
+    let lastExitCode = 0;
+
+    for (let i = 0; i < parts.length; i += 2) {
+      const command = parts[i];
+      const operator = parts[i + 1];
+
+      if (operator === '&&' && lastExitCode !== 0) {
+        break; // Skip rest if previous command failed
+      }
+
+      if (operator === '||' && lastExitCode === 0) {
+        i += 2; // Skip next command if previous succeeded
+        continue;
+      }
+
+      try {
+        const result = await this.executeSingleCommand(command, terminal);
+        results.push(result);
+        lastExitCode = 0;
+      } catch (error) {
+        results.push(`Error: ${error}`);
+        lastExitCode = 1;
+      }
+
+      if (!operator) break;
+    }
+
+    return results.filter(r => r).join('\n');
+  }
+
+  private async executeScript(scriptPath: string, terminal: TerminalInstance): Promise<string> {
+    const state = store.getState();
+    const currentPath = state.fileSystem.currentPath;
+
+    // Handle ./ prefix
+    let fullPath = scriptPath;
+    if (scriptPath.startsWith('./')) {
+      fullPath = `${currentPath}/${scriptPath.substring(2)}`;
+    } else if (!scriptPath.startsWith('/')) {
+      fullPath = `${currentPath}/${scriptPath}`;
+    }
+
+    const scriptNode = findNodeByPath(state.fileSystem.root, fullPath);
+
+    if (!scriptNode) {
+      return `Script not found: ${scriptPath}`;
+    }
+
+    if (scriptNode.type !== 'file') {
+      return `${scriptPath}: is a directory`;
+    }
+
+    const scriptContent = scriptNode.content || '';
+    const lines = scriptContent.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'));
+
+    const results: string[] = [];
+
+    for (const line of lines) {
+      try {
+        const result = await this.executeCommand(line, terminal);
+        if (result) results.push(result);
+      } catch (error) {
+        results.push(`Error executing '${line}': ${error}`);
       }
     }
 
-    if (current) {
-      parts.push(current);
+    return results.join('\n');
+  }
+
+  private async executeSingleCommand(command: string, terminal: TerminalInstance, stdin?: string): Promise<string> {
+    const parts = command.split(/\s+/);
+    const commandName = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    // Check for built-in advanced commands
+    if (commandName === 'export') {
+      return this.handleExport(args);
     }
 
-    return parts;
-  }
-
-  // Variable management
-  private setVariable(name: string, value: string, type: 'string' | 'number' | 'boolean' = 'string', readonly = false) {
-    this.variables.set(name, { name, value, type, readonly });
-  }
-
-  // Command handlers
-  private handleExport(args: string[]): string {
-    if (args.length === 0) {
+    if (commandName === 'env') {
       return this.handleEnv();
     }
 
-    const assignment = args.join(' ');
-    const match = assignment.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
-
-    if (!match) {
-      return 'export: invalid assignment';
+    if (commandName === 'history') {
+      return this.handleHistory(terminal);
     }
 
-    const [, name, value] = match;
-    this.setVariable(name, value);
+    if (commandName === 'which') {
+      return this.handleWhich(args);
+    }
 
-    return '';
+    if (commandName === 'find') {
+      return this.handleFind(args);
+    }
+
+    // For existing commands, use the base command registry
+    return await baseExecuteCommand(command, terminal);
   }
 
-  private handleUnset(args: string[]): string {
+  private handleExport(args: string[]): string {
     if (args.length === 0) {
-      return 'unset: missing variable name';
+      // List all exported variables
+      const exported = Array.from(this.variables.entries())
+        .map(([name, value]) => `export ${name}="${value}"`)
+        .join('\n');
+      return exported || 'No exported variables';
     }
 
-    const varName = args[0];
-    const variable = this.variables.get(varName);
-
-    if (!variable) {
-      return `unset: ${varName}: not found`;
+    const assignment = args.join(' ');
+    if (assignment.includes('=')) {
+      const [varName, ...valueParts] = assignment.split('=');
+      const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+      this.variables.set(varName, value);
+      return '';
+    } else {
+      // Export existing variable
+      const varName = args[0];
+      if (this.variables.has(varName)) {
+        return `export ${varName}="${this.variables.get(varName)}"`;
+      } else {
+        return `export: ${varName}: not found`;
+      }
     }
-
-    if (variable.readonly) {
-      return `unset: ${varName}: readonly variable`;
-    }
-
-    this.variables.delete(varName);
-    return '';
   }
 
   private handleEnv(): string {
-    const vars = Array.from(this.variables.values())
-      .map(v => `${v.name}=${v.value}`)
-      .sort()
+    return Array.from(this.variables.entries())
+      .map(([name, value]) => `${name}=${value}`)
       .join('\n');
-
-    return vars;
   }
 
-  private handleAlias(args: string[]): string {
-    if (args.length === 0) {
-      const aliases = Array.from(this.aliases.entries())
-        .map(([name, command]) => `${name}='${command}'`)
-        .sort()
-        .join('\n');
-
-      return aliases || 'No aliases defined';
-    }
-
-    const assignment = args.join(' ');
-    const match = assignment.match(/^([a-zA-Z_][a-zA-Z0-9_]*)=(.*)$/);
-
-    if (!match) {
-      return 'alias: invalid assignment';
-    }
-
-    const [, name, command] = match;
-    this.aliases.set(name, command.replace(/^['"]|['"]$/g, ''));
-
-    return '';
-  }
-
-  private handleUnalias(args: string[]): string {
-    if (args.length === 0) {
-      return 'unalias: missing alias name';
-    }
-
-    const name = args[0];
-    if (!this.aliases.has(name)) {
-      return `unalias: ${name}: not found`;
-    }
-
-    this.aliases.delete(name);
-    return '';
-  }
-
-  private handleHistory(): string {
-    return this.history
+  private handleHistory(terminal: TerminalInstance): string {
+    return terminal.history
       .map((cmd, index) => `${(index + 1).toString().padStart(4)} ${cmd}`)
       .join('\n');
   }
 
-  private handleGrep(args: string[]): string {
+  private handleWhich(args: string[]): string {
     if (args.length === 0) {
-      return 'grep: missing pattern';
+      return 'which: missing command';
     }
 
-    const pattern = args[0];
-    const filename = args[1];
+    const commandName = args[0];
 
-    // Implementation would search in file or stdin
-    return `grep: searching for pattern '${pattern}' ${filename ? `in ${filename}` : 'in input'}`;
+    if (commandRegistry[commandName]) {
+      return `/bin/${commandName}`;
+    }
+
+    if (this.aliases.has(commandName)) {
+      return `${commandName}: aliased to '${this.aliases.get(commandName)}'`;
+    }
+
+    return `which: ${commandName}: not found`;
   }
 
-  private handleSort(args: string[]): string {
-    const filename = args[0];
-    return `sort: sorting ${filename || 'input'}`;
-  }
+  private handleFind(args: string[]): string {
+    const state = store.getState();
+    let searchPath = state.fileSystem.currentPath;
+    let namePattern = '';
 
-  private handleWc(args: string[]): string {
-    const filename = args[0];
-    return `wc: counting lines, words, chars in ${filename || 'input'}`;
-  }
-
-  private handleHead(args: string[]): string {
-    let lines = 10;
-    let filename = '';
-
+    // Parse find arguments
     for (let i = 0; i < args.length; i++) {
-      if (args[i] === '-n' && i + 1 < args.length) {
-        lines = parseInt(args[i + 1]) || 10;
-        i++; // Skip next arg
-      } else {
-        filename = args[i];
+      if (args[i] === '-name' && i + 1 < args.length) {
+        namePattern = args[i + 1];
+        i++; // Skip next argument
+      } else if (!searchPath || searchPath === state.fileSystem.currentPath) {
+        searchPath = args[i];
       }
     }
 
-    return `head: showing first ${lines} lines of ${filename || 'input'}`;
+    if (!namePattern) {
+      return 'find: missing -name pattern';
+    }
+
+    const results: string[] = [];
+    const searchNode = findNodeByPath(state.fileSystem.root, searchPath);
+
+    if (!searchNode) {
+      return `find: ${searchPath}: No such file or directory`;
+    }
+
+    this.findFiles(searchNode, namePattern, results);
+
+    return results.length > 0 ? results.join('\n') : 'No files found';
   }
 
-  private handleTail(args: string[]): string {
-    let lines = 10;
-    let filename = '';
+  private findFiles(node: any, pattern: string, results: string[], currentPath = ''): void {
+    const regex = new RegExp(pattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
+    const nodePath = currentPath || node.path;
 
-    for (let i = 0; i < args.length; i++) {
-      if (args[i] === '-n' && i + 1 < args.length) {
-        lines = parseInt(args[i + 1]) || 10;
-        i++; // Skip next arg
-      } else {
-        filename = args[i];
+    if (regex.test(node.name)) {
+      results.push(nodePath);
+    }
+
+    if (node.children) {
+      for (const child of node.children) {
+        this.findFiles(child, pattern, results, child.path);
       }
     }
-
-    return `tail: showing last ${lines} lines of ${filename || 'input'}`;
   }
 
-  private handleScript(args: string[]): string {
-    if (args.length === 0) {
-      return 'script: missing action (create|run|list|delete)';
-    }
-
-    const action = args[0];
-    const name = args[1];
-
-    switch (action) {
-      case 'create':
-        if (!name) return 'script: missing script name';
-        // Implementation would open script editor
-        return `script: creating script '${name}'`;
-
-      case 'run':
-        if (!name) return 'script: missing script name';
-        // Implementation would execute script
-        return `script: running script '${name}'`;
-
-      case 'list':
-        const scripts = Array.from(this.scripts.keys()).join('\n');
-        return scripts || 'No scripts found';
-
-      case 'delete':
-        if (!name) return 'script: missing script name';
-        if (this.scripts.has(name)) {
-          this.scripts.delete(name);
-          return `script: deleted '${name}'`;
-        }
-        return `script: '${name}' not found`;
-
-      default:
-        return 'script: invalid action (create|run|list|delete)';
-    }
+  // Get environment variable
+  getVariable(name: string): string | undefined {
+    return this.variables.get(name);
   }
 
-  private handleIf(args: string[]): string {
-    // Simplified conditional implementation
-    return 'if: conditional execution (simplified implementation)';
+  // Set environment variable
+  setVariable(name: string, value: string): void {
+    this.variables.set(name, value);
   }
 
-  private handleFor(args: string[]): string {
-    // Simplified loop implementation
-    return 'for: loop execution (simplified implementation)';
-  }
-
-  // Pipeline command implementations
-  private pipeGrep(args: string[], input: string): string {
-    if (args.length === 0) return input;
-
-    const pattern = args[0];
-    const regex = new RegExp(pattern, 'i');
-
-    return input
-      .split('\n')
-      .filter(line => regex.test(line))
-      .join('\n');
-  }
-
-  private pipeSort(args: string[], input: string): string {
-    const lines = input.split('\n');
-
-    if (args.includes('-r')) {
-      return lines.sort().reverse().join('\n');
-    }
-
-    return lines.sort().join('\n');
-  }
-
-  private pipeWc(args: string[], input: string): string {
-    const lines = input.split('\n').length;
-    const words = input.split(/\s+/).filter(w => w).length;
-    const chars = input.length;
-
-    if (args.includes('-l')) return lines.toString();
-    if (args.includes('-w')) return words.toString();
-    if (args.includes('-c')) return chars.toString();
-
-    return `${lines} ${words} ${chars}`;
-  }
-
-  private pipeHead(args: string[], input: string): string {
-    let lines = 10;
-
-    const nIndex = args.indexOf('-n');
-    if (nIndex !== -1 && nIndex + 1 < args.length) {
-      lines = parseInt(args[nIndex + 1]) || 10;
-    }
-
-    return input.split('\n').slice(0, lines).join('\n');
-  }
-
-  private pipeTail(args: string[], input: string): string {
-    let lines = 10;
-
-    const nIndex = args.indexOf('-n');
-    if (nIndex !== -1 && nIndex + 1 < args.length) {
-      lines = parseInt(args[nIndex + 1]) || 10;
-    }
-
-    const inputLines = input.split('\n');
-    return inputLines.slice(-lines).join('\n');
-  }
-
-  // Getters for terminal state
-  getVariables(): Map<string, TerminalVariable> {
+  // Get all variables
+  getAllVariables(): Map<string, string> {
     return new Map(this.variables);
   }
 
-  getAliases(): Map<string, string> {
+  // Get all aliases
+  getAllAliases(): Map<string, string> {
     return new Map(this.aliases);
-  }
-
-  getHistory(): string[] {
-    return [...this.history];
   }
 }
 
-export const advancedTerminal = new AdvancedTerminalProcessor();
-export default AdvancedTerminalProcessor;
+// Global instance
+export const advancedTerminal = new AdvancedTerminal();
