@@ -115,6 +115,80 @@ class PerformanceMonitor {
   public enable() {
     this.isEnabled = true;
   }
+
+  public getBundleSize(): Promise<number> {
+    return new Promise((resolve) => {
+      if ('connection' in navigator) {
+        // Estimate bundle size from resource timing
+        const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+        const jsResources = resources.filter(r => r.name.endsWith('.js'));
+        const totalSize = jsResources.reduce((total, resource) => {
+          return total + (resource.transferSize || resource.encodedBodySize || 0);
+        }, 0);
+        resolve(totalSize);
+      } else {
+        resolve(0);
+      }
+    });
+  }
+
+  public analyzeMemoryUsage(): any {
+    if ('memory' in performance) {
+      const memory = (performance as any).memory;
+      return {
+        usedJSHeapSize: memory.usedJSHeapSize,
+        totalJSHeapSize: memory.totalJSHeapSize,
+        jsHeapSizeLimit: memory.jsHeapSizeLimit,
+        usage: (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100
+      };
+    }
+    return null;
+  }
+
+  public checkForMemoryLeaks(): void {
+    const initialMemory = this.analyzeMemoryUsage();
+
+    // Check memory after 30 seconds
+    setTimeout(() => {
+      const currentMemory = this.analyzeMemoryUsage();
+      if (initialMemory && currentMemory) {
+        const memoryIncrease = currentMemory.usedJSHeapSize - initialMemory.usedJSHeapSize;
+        if (memoryIncrease > 10 * 1024 * 1024) { // 10MB threshold
+          this.logMetric('MemoryLeak', memoryIncrease, undefined, 'MemoryGrowth');
+        }
+      }
+    }, 30000);
+  }
+
+  public optimizeImages(): void {
+    const images = document.querySelectorAll('img');
+    images.forEach(img => {
+      if (!img.loading) {
+        img.loading = 'lazy';
+      }
+      if (!img.decoding) {
+        img.decoding = 'async';
+      }
+    });
+  }
+
+  public preloadCriticalResources(urls: string[]): void {
+    urls.forEach(url => {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.href = url;
+
+      if (url.endsWith('.js')) {
+        link.as = 'script';
+      } else if (url.endsWith('.css')) {
+        link.as = 'style';
+      } else if (url.match(/\.(png|jpg|jpeg|webp|svg)$/)) {
+        link.as = 'image';
+      }
+
+      document.head.appendChild(link);
+    });
+  }
 }
 
 export const performanceMonitor = new PerformanceMonitor();

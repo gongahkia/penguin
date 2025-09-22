@@ -118,15 +118,71 @@ app.use('*', (req, res) => {
   });
 });
 
-// Database connection
+// Database connection with optimization
 const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/penguin-os';
-    await mongoose.connect(mongoUri);
-    logger.info('Connected to MongoDB');
+
+    // Optimized connection options
+    await mongoose.connect(mongoUri, {
+      maxPoolSize: 10, // Maximum number of connections in the pool
+      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+      socketTimeoutMS: 45000, // Close connections after 45 seconds of inactivity
+      bufferCommands: false, // Disable mongoose buffering
+      bufferMaxEntries: 0, // Disable mongoose buffering
+      connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
+      retryWrites: true, // Enable retryable writes
+      writeConcern: { w: 'majority', j: true }, // Ensure write concern
+    });
+
+    // Enable query optimization
+    mongoose.set('strictQuery', true);
+
+    // Connection event handlers
+    mongoose.connection.on('connected', () => {
+      logger.info('Mongoose connected to MongoDB');
+    });
+
+    mongoose.connection.on('error', (err) => {
+      logger.error('Mongoose connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      logger.warn('Mongoose disconnected from MongoDB');
+    });
+
+    // Create indexes for better performance
+    await createDatabaseIndexes();
+
+    logger.info('Connected to MongoDB with optimizations');
   } catch (error) {
     logger.error('MongoDB connection error:', error);
     process.exit(1);
+  }
+};
+
+// Create database indexes for performance
+const createDatabaseIndexes = async () => {
+  try {
+    const db = mongoose.connection.db;
+
+    // User indexes
+    await db.collection('users').createIndex({ email: 1 }, { unique: true });
+    await db.collection('users').createIndex({ username: 1 }, { unique: true });
+    await db.collection('users').createIndex({ createdAt: -1 });
+
+    // File system indexes
+    await db.collection('files').createIndex({ userId: 1, path: 1 }, { unique: true });
+    await db.collection('files').createIndex({ userId: 1, parentId: 1 });
+    await db.collection('files').createIndex({ userId: 1, updatedAt: -1 });
+
+    // Session indexes
+    await db.collection('sessions').createIndex({ userId: 1 });
+    await db.collection('sessions').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+    logger.info('Database indexes created successfully');
+  } catch (error) {
+    logger.warn('Failed to create some database indexes:', error);
   }
 };
 

@@ -107,14 +107,48 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-redux', '@reduxjs/toolkit'],
-          ui: ['react-rnd', 'react-dnd', 'react-dnd-html5-backend'],
-          utils: ['socket.io-client', 'clsx'],
-          icons: ['lucide-react'],
+        manualChunks: (id) => {
+          // Vendor libraries
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('redux')) {
+              return 'vendor-react'
+            }
+            if (id.includes('socket.io') || id.includes('ws')) {
+              return 'vendor-socket'
+            }
+            if (id.includes('lucide-react') || id.includes('icons')) {
+              return 'vendor-icons'
+            }
+            if (id.includes('dnd') || id.includes('rnd')) {
+              return 'vendor-ui'
+            }
+            return 'vendor-misc'
+          }
+
+          // Application chunks
+          if (id.includes('/apps/')) {
+            const appName = id.split('/apps/')[1].split('/')[0]
+            return `app-${appName.toLowerCase()}`
+          }
+
+          if (id.includes('/components/')) {
+            return 'components'
+          }
+
+          if (id.includes('/utils/')) {
+            return 'utils'
+          }
+
+          if (id.includes('/store/')) {
+            return 'store'
+          }
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500,
+    target: 'esnext',
+    minify: 'esbuild',
+    cssCodeSplit: true,
+    assetsInlineLimit: 2048,
   },
 })

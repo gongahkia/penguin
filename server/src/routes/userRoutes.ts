@@ -2,17 +2,27 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { AuthRequest } from '@/middleware/auth';
 import { asyncHandler, HttpError } from '@/middleware/errorHandler';
+import { userCacheMiddleware, invalidateCacheByUserId } from '@/middleware/cache';
 
 const router = express.Router();
 
-// Get user profile
-router.get('/profile', asyncHandler(async (req: AuthRequest, res) => {
+// Get user profile with caching
+router.get('/profile', userCacheMiddleware, asyncHandler(async (req: AuthRequest, res) => {
   if (!req.user) {
     throw new HttpError('User not found', 404);
   }
 
+  // Use lean() for better performance when we don't need the full Mongoose document
+  const user = await req.user.constructor.findById(req.user._id)
+    .select('-password -__v')
+    .lean();
+
+  if (!user) {
+    throw new HttpError('User not found', 404);
+  }
+
   res.json({
-    user: req.user.toJSON()
+    user: user
   });
 }));
 
@@ -45,6 +55,9 @@ router.patch('/preferences',
       }, {});
 
     const updatedUser = await req.user.updateOne(updates, { new: true });
+
+    // Invalidate user cache after update
+    invalidateCacheByUserId(req.user._id.toString());
 
     res.json({
       message: 'Preferences updated successfully',
@@ -79,7 +92,8 @@ router.patch('/profile',
     const updates: any = {};
 
     if (username && username !== req.user.username) {
-      const existingUser = await req.user.constructor.findOne({ username });
+      // Use lean() and select for better performance
+      const existingUser = await req.user.constructor.findOne({ username }).select('_id').lean();
       if (existingUser) {
         throw new HttpError('Username already taken', 409);
       }
@@ -87,7 +101,8 @@ router.patch('/profile',
     }
 
     if (email && email !== req.user.email) {
-      const existingUser = await req.user.constructor.findOne({ email });
+      // Use lean() and select for better performance
+      const existingUser = await req.user.constructor.findOne({ email }).select('_id').lean();
       if (existingUser) {
         throw new HttpError('Email already taken', 409);
       }
@@ -96,6 +111,9 @@ router.patch('/profile',
 
     if (Object.keys(updates).length > 0) {
       await req.user.updateOne(updates);
+
+      // Invalidate user cache after update
+      invalidateCacheByUserId(req.user._id.toString());
     }
 
     res.json({
