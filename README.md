@@ -1,16 +1,14 @@
 [![](https://img.shields.io/badge/penguin_1.0.0-passing-green)](https://github.com/gongahkia/penguin/releases/tag/1.0.0)
 
-# `Penguin OS` 🐧
+# `Penguin`
 
 Interactive Custom Operating System Simulation for the Browser with [Complete Desktop Environment](#stack), [Virtual File System](#usage), and [Multi-user Workspaces](#architecture).
 
-Made to explore [Modern Web Technologies](#stack) for simulating complex systems in the browser. Additional insights in [Development TODO](./TODO.md).
-
 ## Rationale
 
-Ever wanted to experience a full desktop operating system without leaving your browser? What if you could run multiple applications, manage files, and even collaborate with others in real-time - all within a web application?
+Ever wanted to experience a full desktop operating system without leaving your browser? What if you could run multiple applications, manage files, and even collaborate with others in real-time, all within a web application?
 
-I built [***Penguin OS***](https://github.com/gongahkia/penguin) to deliver exactly that experience.
+I built [Penguin](https://github.com/gongahkia/penguin) to scratch that itch. Takeaways [here](#other-notes).
 
 ## Stack
 
@@ -23,7 +21,7 @@ I built [***Penguin OS***](https://github.com/gongahkia/penguin) to deliver exac
 
 ## Usage
 
-The below instructions are for locally hosting `Penguin OS`.
+The below instructions are for locally hosting `Penguin`.
 
 1. First execute the below.
 
